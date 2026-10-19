@@ -3,7 +3,15 @@ import asyncio
 from datetime import timedelta
 import logging
 
-from pymadoka import Controller, discover_devices, force_device_disconnect
+import bleak
+
+# pymadoka (<= 0.2.13) does `from bleak import discover`, which was removed in
+# bleak 1.0 (HA 2025.8+). pymadoka never calls it, so provide a placeholder
+# before importing pymadoka. See mduran80/pymadoka#24.
+if not hasattr(bleak, "discover"):
+    bleak.discover = None
+
+from pymadoka import Controller, discover_devices, force_device_disconnect  # noqa: E402
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -79,22 +87,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {CONTROLLERS: controllers}
-    for component in COMPONENT_TYPES:
-        coroutine = hass.config_entries.async_forward_entry_setups(entry, [component])
-        hass.async_create_task(coroutine)
-
+    await hass.config_entries.async_forward_entry_setups(entry, COMPONENT_TYPES)
 
     return True
 
 
 async def async_unload_entry(hass, config_entry):
     """Unload a config entry."""
-    await asyncio.wait(
-        [
-            hass.async_create_task(hass.config_entries.async_forward_entry_unload(config_entry, component))
-            for component in COMPONENT_TYPES
-        ]
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        config_entry, COMPONENT_TYPES
     )
-    hass.data[DOMAIN].pop(config_entry.entry_id)
+    if unload_ok:
+        hass.data[DOMAIN].pop(config_entry.entry_id)
 
-    return True
+    return unload_ok

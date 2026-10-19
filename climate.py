@@ -370,5 +370,4 @@ class DaikinMadokaClimate(ClimateEntity):
             "manufacturer": "DAIKIN",
             "model": model,
             "sw_version": sw_version,
-            "via_device": (DOMAIN, self.unique_id),
         }
