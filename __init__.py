@@ -11,8 +11,17 @@ import bleak
 if not hasattr(bleak, "discover"):
     bleak.discover = None
 
+from habluetooth import HaBleakClientWrapper, HaBleakScannerWrapper  # noqa: E402
 from pymadoka import Controller, discover_devices, force_device_disconnect  # noqa: E402
+import pymadoka.connection  # noqa: E402
 import voluptuous as vol
+
+# pymadoka binds bleak's classes at import time, which may happen before HA's
+# Bluetooth manager swaps in its wrappers. Use the wrappers explicitly so
+# scanning and connections go through HA's adapters and remote Bluetooth
+# proxies (e.g. ESPHome). The `adapter` argument is ignored by the wrappers.
+pymadoka.connection.BleakScanner = HaBleakScannerWrapper
+pymadoka.connection.BleakClient = HaBleakClientWrapper
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
